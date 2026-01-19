@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filter, ChevronUp, ChevronDown, X, Check, Trash2 } from 'lucide-react';
 
 export const Filters = ({ filters, uniqueValues, onUpdate, onToggle, onReset, schema, hasActiveFilters }) => {
@@ -20,11 +20,19 @@ export const Filters = ({ filters, uniqueValues, onUpdate, onToggle, onReset, sc
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredEmployers = uniqueValues.employers.filter(e =>
-    e.toLowerCase().includes(filters.employerSearch.toLowerCase())
+  // Memoize filtered results to prevent input from losing focus
+  const filteredEmployers = useMemo(() => 
+    uniqueValues.employers.filter(e =>
+      e.toLowerCase().includes(filters.employerSearch.toLowerCase())
+    ),
+    [uniqueValues.employers, filters.employerSearch]
   );
-  const filteredJobTitles = uniqueValues.jobTitles.filter(j =>
-    j.toLowerCase().includes(filters.jobTitleSearch.toLowerCase())
+  
+  const filteredJobTitles = useMemo(() =>
+    uniqueValues.jobTitles.filter(j =>
+      j.toLowerCase().includes(filters.jobTitleSearch.toLowerCase())
+    ),
+    [uniqueValues.jobTitles, filters.jobTitleSearch]
   );
 
   const MultiSelect = ({ ref, label, items, selected, search, onSearch, onToggleItem, show, setShow }) => (
