@@ -1,6 +1,49 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Filter, ChevronUp, ChevronDown, X, Check, Trash2 } from 'lucide-react';
 
+// Define MultiSelect OUTSIDE to prevent remounting on re-renders
+const MultiSelect = ({ inputRef, label, items, selected, search, onSearch, onToggleItem, show, setShow }) => (
+  <div ref={inputRef} className="relative">
+    <div className="relative">
+      <input
+        type="text"
+        placeholder={`${label}...`}
+        value={search}
+        onChange={e => onSearch(e.target.value)}
+        onFocus={() => setShow(true)}
+        className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded focus:border-blue-500 focus:outline-none"
+      />
+      {selected.length > 0 && (
+        <span className="absolute right-2 top-1.5 text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded">
+          {selected.length}
+        </span>
+      )}
+    </div>
+    {show && (
+      <div className="absolute z-50 mt-1 w-80 max-h-64 overflow-y-auto bg-gray-800 border border-gray-700 rounded shadow-lg">
+        {selected.length > 0 && (
+          <div className="p-2 border-b border-gray-700 flex flex-wrap gap-1">
+            {selected.map(item => (
+              <span key={item} className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded">
+                {item.length > 20 ? item.substring(0, 20) + '...' : item}
+                <X className="w-3 h-3 cursor-pointer" onClick={() => onToggleItem(item)} />
+              </span>
+            ))}
+          </div>
+        )}
+        {items.slice(0, 50).map(item => (
+          <div key={item} onClick={() => onToggleItem(item)} className="px-3 py-2 hover:bg-gray-700 cursor-pointer flex items-center gap-2 text-sm">
+            <div className={`w-4 h-4 border rounded flex items-center justify-center ${selected.includes(item) ? 'bg-blue-600 border-blue-600' : 'border-gray-600'}`}>
+              {selected.includes(item) && <Check className="w-3 h-3" />}
+            </div>
+            <span className="truncate">{item}</span>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 export const Filters = ({ filters, uniqueValues, onUpdate, onToggle, onReset, schema, hasActiveFilters }) => {
   const [showFilters, setShowFilters] = useState(true);
   const [showEmployerDropdown, setShowEmployerDropdown] = useState(false);
@@ -8,7 +51,6 @@ export const Filters = ({ filters, uniqueValues, onUpdate, onToggle, onReset, sc
   const employerRef = useRef(null);
   const jobTitleRef = useRef(null);
 
-  // Check if columns exist in current schema
   const hasColumn = (col) => !schema || schema.some(s => s.name === col);
 
   useEffect(() => {
@@ -20,7 +62,6 @@ export const Filters = ({ filters, uniqueValues, onUpdate, onToggle, onReset, sc
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Memoize filtered results to prevent input from losing focus
   const filteredEmployers = useMemo(() => 
     uniqueValues.employers.filter(e =>
       e.toLowerCase().includes(filters.employerSearch.toLowerCase())
@@ -33,48 +74,6 @@ export const Filters = ({ filters, uniqueValues, onUpdate, onToggle, onReset, sc
       j.toLowerCase().includes(filters.jobTitleSearch.toLowerCase())
     ),
     [uniqueValues.jobTitles, filters.jobTitleSearch]
-  );
-
-  const MultiSelect = ({ ref, label, items, selected, search, onSearch, onToggleItem, show, setShow }) => (
-    <div ref={ref} className="relative">
-      <div className="relative">
-        <input
-          type="text"
-          placeholder={`${label}...`}
-          value={search}
-          onChange={e => onSearch(e.target.value)}
-          onFocus={() => setShow(true)}
-          className="w-full px-2 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded focus:border-blue-500 focus:outline-none"
-        />
-        {selected.length > 0 && (
-          <span className="absolute right-2 top-1.5 text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded">
-            {selected.length}
-          </span>
-        )}
-      </div>
-      {show && (
-        <div className="absolute z-50 mt-1 w-80 max-h-64 overflow-y-auto bg-gray-800 border border-gray-700 rounded shadow-lg">
-          {selected.length > 0 && (
-            <div className="p-2 border-b border-gray-700 flex flex-wrap gap-1">
-              {selected.map(item => (
-                <span key={item} className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded">
-                  {item.length > 20 ? item.substring(0, 20) + '...' : item}
-                  <X className="w-3 h-3 cursor-pointer" onClick={() => onToggleItem(item)} />
-                </span>
-              ))}
-            </div>
-          )}
-          {items.slice(0, 50).map(item => (
-            <div key={item} onClick={() => onToggleItem(item)} className="px-3 py-2 hover:bg-gray-700 cursor-pointer flex items-center gap-2 text-sm">
-              <div className={`w-4 h-4 border rounded flex items-center justify-center ${selected.includes(item) ? 'bg-blue-600 border-blue-600' : 'border-gray-600'}`}>
-                {selected.includes(item) && <Check className="w-3 h-3" />}
-              </div>
-              <span className="truncate">{item}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 
   return (
@@ -96,12 +95,12 @@ export const Filters = ({ filters, uniqueValues, onUpdate, onToggle, onReset, sc
       {showFilters && (
         <div className="px-4 pb-3 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
           {hasColumn('EMPLOYER_NAME') && (
-            <MultiSelect ref={employerRef} label="Employer" items={filteredEmployers} selected={filters.employers}
+            <MultiSelect inputRef={employerRef} label="Employer" items={filteredEmployers} selected={filters.employers}
               search={filters.employerSearch} onSearch={v => onUpdate('employerSearch', v)}
               onToggleItem={e => onToggle('employers', e)} show={showEmployerDropdown} setShow={setShowEmployerDropdown} />
           )}
           {hasColumn('JOB_TITLE') && (
-            <MultiSelect ref={jobTitleRef} label="Job Title" items={filteredJobTitles} selected={filters.jobTitles}
+            <MultiSelect inputRef={jobTitleRef} label="Job Title" items={filteredJobTitles} selected={filters.jobTitles}
               search={filters.jobTitleSearch} onSearch={v => onUpdate('jobTitleSearch', v)}
               onToggleItem={j => onToggle('jobTitles', j)} show={showJobTitleDropdown} setShow={setShowJobTitleDropdown} />
           )}
